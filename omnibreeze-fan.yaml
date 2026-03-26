@@ -1,0 +1,124 @@
+# OmniBreeze DC2313R Tower Fan — ESPHome Configuration
+# https://github.com/ea/omnibreeze-esphome
+#
+# Hardware: Waveshare ESP32-S3 Mini (or any ESP32-S3 dev board)
+#
+# Wiring:
+#   ZA (GND)  → ESP32 GND
+#   RF        → ESP32 GPIO6 (direct)
+#   ZO        → ESP32 GPIO5 (direct) AND ESP32 GPIO6 (through 1KΩ resistor)
+#   QG (5V)   → DO NOT CONNECT
+#
+# The fan uses inverted UART (idle LOW) on a single bidirectional data line (ZO).
+# GPIO6 connects to both RF (direct) and ZO (through 1KΩ) to enable the MCU
+# and send commands without overpowering the MCU's status transmissions.
+
+esphome:
+  name: omnibreeze-fan
+  friendly_name: OmniBreeze Fan
+
+esp32:
+  board: esp32-s3-devkitm-1
+  framework:
+    type: arduino
+
+logger:
+  baud_rate: 0
+  level: DEBUG
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "OmniBreeze-Fallback"
+    password: "fallback123"
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+# Inverted UART — the fan MCU uses idle-LOW signaling
+# GPIO6 TX goes to both RF (direct) and ZO (through 1KΩ resistor)
+# GPIO5 RX connects directly to ZO
+uart:
+  rx_pin:
+    number: GPIO5
+    inverted: true
+  tx_pin:
+    number: GPIO6
+    inverted: true
+  baud_rate: 9600
+
+tuya:
+
+# Fan entity with power and speed control
+fan:
+  - platform: tuya
+    name: "Fan"
+    switch_datapoint: 1
+    speed_datapoint: 3
+    speed_count: 5
+
+# Mode selection: Normal, Natural, Sleep, Auto
+select:
+  - platform: tuya
+    name: "Mode"
+    enum_datapoint: 2
+    options:
+      0: "Normal"
+      1: "Natural"
+      2: "Sleep"
+      3: "Auto"
+
+  # Timer: 1-12 hours or cancel
+  - platform: tuya
+    name: "Timer"
+    enum_datapoint: 22
+    options:
+      0: "Cancel"
+      1: "1h"
+      2: "2h"
+      3: "3h"
+      4: "4h"
+      5: "5h"
+      6: "6h"
+      7: "7h"
+      8: "8h"
+      9: "9h"
+      10: "10h"
+      11: "11h"
+      12: "12h"
+
+# Toggle switches
+switch:
+  - platform: tuya
+    name: "Oscillation"
+    switch_datapoint: 5
+
+  - platform: tuya
+    name: "Beep"
+    switch_datapoint: 13
+    entity_category: config
+
+  - platform: tuya
+    name: "Display"
+    switch_datapoint: 15
+    entity_category: config
+
+# Room temperature sensor
+sensor:
+  - platform: tuya
+    name: "Temperature"
+    sensor_datapoint: 21
+    unit_of_measurement: "°C"
+    device_class: temperature
